@@ -1,0 +1,4 @@
+rootfs/
+database.env
+frontend.env
+pretix.cfg

@@ -1,0 +1,78 @@
+version: '2'
+
+services:
+  database:
+    image: postgres:9.6-alpine
+    env_file: database.env
+    volumes:
+      - ./rootfs/postgresql/data:/var/lib/postgresql/data
+    networks:
+      - backend
+    logging:
+      driver: none
+
+  redis:
+    image: redis:latest
+    networks:
+      - backend
+    logging:
+      driver: none
+
+  pretix_base:
+    build: .
+    volumes:
+      - ./rootfs/data:/data
+    networks:
+      - backend
+    logging:
+      driver: none
+
+  pretix_web:
+    extends: pretix_base
+    command: /pretix/src/docker-entrypoint.sh
+    volumes:
+      - ./rootfs/static:/pretix/src/pretix/static.dist
+      - ./pretix.cfg:/etc/pretix/pretix.cfg
+    depends_on:
+      - database
+      - redis
+    networks:
+      - backend
+    logging:
+      driver: none
+
+  pretix_task:
+    extends: pretix_base
+    command: celery -A pretix.celery_app worker -l info
+    environment:
+      - C_FORCE_ROOT=True
+    volumes:
+      - ./pretix.cfg:/etc/pretix/pretix.cfg
+    depends_on:
+      - pretix_web
+    networks:
+      - backend
+    logging:
+      driver: none
+
+  nginx:
+    image: nginx:latest
+    expose:
+      - "80"
+    env_file: frontend.env
+    volumes:
+      - ./rootfs/static:/static
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - pretix_web
+    networks:
+      - backend
+      - frontend-web
+    logging:
+      driver: none
+
+networks:
+  frontend-web:
+    external: true
+  backend:
+    driver: bridge
