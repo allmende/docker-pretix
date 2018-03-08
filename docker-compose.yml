@@ -62,6 +62,7 @@ services:
     env_file: frontend.env
     volumes:
       - ./rootfs/static:/static
+      - ./rootfs/data/media:/data/media
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - pretix_web
