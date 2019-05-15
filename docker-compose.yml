@@ -5,7 +5,7 @@ services:
     image: postgres:9.6-alpine
     env_file: database.env
     volumes:
-      - ./rootfs/postgresql/data:/var/lib/postgresql/data
+      - /data/bases/tickets.degrowth.net/postgresql/data:/var/lib/postgresql/data
     networks:
       - backend
     logging:
@@ -76,4 +76,3 @@ networks:
   frontend-web:
     external: true
   backend:
-    driver: bridge

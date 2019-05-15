@@ -1,4 +1,4 @@
-FROM python:3.6
+FROM python:stretch
 
 VOLUME /etc/pretix
 VOLUME /data
@@ -7,7 +7,7 @@ VOLUME /static
 RUN apt-get update
 RUN apt-get install -y git libxml2-dev libxslt1-dev python-dev python-virtualenv locales \
     libffi-dev build-essential python3-dev zlib1g-dev libssl-dev gettext libpq-dev \
-    libmysqlclient-dev libjpeg-dev sudo
+    default-libmysqlclient-dev libjpeg-dev sudo
 
 RUN apt-get clean
 RUN rm -rf /var/lib/apt/lists/* && \
@@ -23,7 +23,7 @@ WORKDIR /
 RUN git clone --branch $BRANCH --depth 1 https://github.com/pretix/pretix.git \
     && cd /pretix/src \
     && pip3 install -U pip wheel setuptools uwsgi \
-    && pip3 install -r requirements.txt -r requirements/postgres.txt -r requirements/redis.txt
+    && pip3 install -r requirements.txt -r requirements/redis.txt
 
 WORKDIR /pretix/src
 RUN mkdir -p data
