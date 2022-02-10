@@ -18,7 +18,7 @@ RUN rm -rf /var/lib/apt/lists/* && \
 ENV LC_ALL=C.UTF-8
 ENV DJANGO_SETTINGS_MODULE=production_settings
 
-ARG BRANCH=master
+ARG BRANCH="release/3.6.x"
 WORKDIR /
 RUN git clone --branch $BRANCH --depth 1 https://github.com/pretix/pretix.git \
     && cd /pretix/src \
