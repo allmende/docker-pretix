@@ -5,74 +5,66 @@ services:
     image: postgres:9.6-alpine
     env_file: database.env
     volumes:
-      - /data/bases/tickets.degrowth.net/postgresql/data:/var/lib/postgresql/data
+      - /data/bases/postgres/pretix.allmende.io:/var/lib/postgresql/data
     networks:
       - backend
     logging:
-      driver: none
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+        compress: 'true'
 
   redis:
-    image: redis:latest
+    image: redis:6-alpine
+    command: redis-server --save 60 1 --loglevel warning
     networks:
       - backend
+    volumes:
+      - /data/bases/redis/pretix.allmende.io:/data
     logging:
-      driver: none
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+        compress: 'true'
 
-  pretix_base:
-    build: .
+  pretix:
+    image: pretix/standalone:4.6.0
     volumes:
       - ./rootfs/data:/data
-    networks:
-      - backend
-    logging:
-      driver: none
-
-  pretix_web:
-    extends: pretix_base
-    command: /pretix/src/docker-entrypoint.sh
-    volumes:
-      - ./rootfs/static:/pretix/src/pretix/static.dist
-      - ./pretix.cfg:/etc/pretix/pretix.cfg
+      - ./rootfs/etc/pretix:/etc/pretix
     depends_on:
       - database
       - redis
     networks:
       - backend
-    logging:
-      driver: none
+      - web
+    sysctls:
+      net.core.somaxconn: 4096
+    labels:
+      traefik.enable: true
 
-  pretix_task:
-    extends: pretix_base
-    command: celery -A pretix.celery_app worker -l info
-    environment:
-      - C_FORCE_ROOT=True
-    volumes:
-      - ./pretix.cfg:/etc/pretix/pretix.cfg
-    depends_on:
-      - pretix_web
-    networks:
-      - backend
-    logging:
-      driver: none
+      traefik.http.routers.io-allmende-pretix-web.entrypoints: web
+      traefik.http.routers.io-allmende-pretix-web.rule: Host(`pretix.allmende.io`)
+      traefik.http.routers.io-allmende-pretix-web.middlewares: http-to-https
 
-  nginx:
-    image: nginx:latest
-    expose:
-      - "80"
-    env_file: frontend.env
-    volumes:
-      - ./rootfs/static:/static
-      - ./rootfs/data/media:/data/media
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - pretix_web
-    networks:
-      - backend
-      - frontend-web
+      traefik.http.middlewares.http-to-https.redirectscheme.scheme: https
+      traefik.http.middlewares.http-to-https.redirectscheme.permanent: true
+
+      traefik.http.routers.io-allmende-pretix-web-secure.entrypoints: webs
+      traefik.http.routers.io-allmende-pretix-web-secure.rule: Host(`pretix.allmende.io`)
+      traefik.http.routers.io-allmende-pretix-web-secure.tls: true
+      traefik.http.routers.io-allmende-pretix-web-secure.tls.certresolver: le
+
     logging:
-      driver: none
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+        compress: 'true'
 
 networks:
-  frontend-web:
+  web:
     external: true
   backend:
