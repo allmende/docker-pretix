@@ -1,4 +1,3 @@
-rootfs/
-database.env
-frontend.env
-pretix.cfg
+.env
+*.swp
+.state/
