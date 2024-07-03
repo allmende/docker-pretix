@@ -1,19 +1,26 @@
-version: '2'
+
+networks:
+  web:
+    external: true
+  backend:
 
 services:
   database:
-    image: postgres:9.6-alpine
-    env_file: database.env
+    image: postgres:15-alpine
     volumes:
       - /data/bases/postgres/pretix.allmende.io:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_DB
+      - POSTGRES_PASSWORD
     networks:
       - backend
-    logging:
-      driver: 'json-file'
-      options:
-        max-size: '10m'
-        max-file: '3'
-        compress: 'true'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_USER} -U $${POSTGRES_USER}"]
+      start_period: 20s
+      interval: 10s
+      retries: 5
+      timeout: 5s
 
   redis:
     image: redis:6-alpine
@@ -22,21 +29,23 @@ services:
       - backend
     volumes:
       - /data/bases/redis/pretix.allmende.io:/data
-    logging:
-      driver: 'json-file'
-      options:
-        max-size: '10m'
-        max-file: '3'
-        compress: 'true'
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      start_period: 10s
+      interval: 10s
+      retries: 5
+      timeout: 3s
 
   pretix:
-    image: pretix/standalone:4.6.0
+    image: pretix/standalone:2024.6
     volumes:
-      - ./rootfs/data:/data
-      - ./rootfs/etc/pretix:/etc/pretix
+      - ./.state/pretix/data:/data
+      - ./.state/pretix/etc/pretix:/etc/pretix
     depends_on:
-      - database
-      - redis
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - backend
       - web
@@ -63,8 +72,3 @@ services:
         max-size: '10m'
         max-file: '3'
         compress: 'true'
-
-networks:
-  web:
-    external: true
-  backend:
